@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+pydantic
+pydantic-settings
+google-genai
+firebase-admin
+python-multipart
+httpx
+pytest
+pytest-asyncio
+structlog
+python-dotenv
+email-validator
