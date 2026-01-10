@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 class GeminiService:
     def __init__(self):
         self.client = genai.Client(api_key=settings.GEMINI_API_KEY)
-        self.model_id = 'gemini-1.5-flash'
+        self.model_id = 'gemini-pro'
         
     async def generate_response(self, query: str, context: dict = None) -> dict:
         """
