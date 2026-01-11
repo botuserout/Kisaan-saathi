@@ -1,4 +1,4 @@
-import ChatClient from '@/components/features/chat/chat-client';
+import dynamicClient from 'next/dynamic';
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 
@@ -9,6 +9,11 @@ export const metadata: Metadata = {
 
 // Force dynamic rendering to prevent static export errors
 export const dynamic = 'force-dynamic';
+
+const ChatClient = dynamicClient(
+  () => import('@/components/features/chat/chat-client'),
+  { ssr: false }
+);
 
 export default function ChatPage() {
   return (
