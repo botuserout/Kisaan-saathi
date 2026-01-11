@@ -1,7 +1,11 @@
 
 import { auth } from '@/lib/firebase';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+
+if (!API_BASE_URL) {
+    console.error("API Base URL is not defined. Please check your .env.local");
+}
 
 type RequestMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
 

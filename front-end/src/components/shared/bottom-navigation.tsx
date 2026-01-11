@@ -5,6 +5,7 @@ import {
   Home,
   Landmark,
   Stethoscope,
+  User,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -16,15 +17,15 @@ const navItems = [
   { href: '/', icon: Home, label: 'Home' },
   { href: '/disease-detection', icon: Stethoscope, label: 'Diagnose' },
   { href: '/chat', icon: BotMessageSquare, label: 'Chat', isNew: true },
-  { href: '/schemes', icon: Landmark, label: 'Schemes' },
+  { href: '/profile', icon: User, label: 'Profile' },
 ];
 
 export default function BottomNavigation() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 h-20 bg-card/95 backdrop-blur-sm border-t md:hidden">
-      <div className="grid h-full grid-cols-4">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 h-20 bg-card/95 backdrop-blur-sm border-t">
+      <div className="max-w-4xl mx-auto h-full grid grid-cols-4">
         {navItems.map((item) => {
           const isActive =
             item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);

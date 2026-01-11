@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import { useEffect, useState } from "react";
 
@@ -20,55 +20,65 @@ export function useLocation() {
 
   useEffect(() => {
     if (!navigator.geolocation) {
-      console.warn("Geolocation not supported by browser.");
-      fetchIpLocation();
+      setLocation(prev => ({ ...prev, loading: false, error: "Geolocation not supported" }));
       return;
     }
 
     navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setLocation({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-          loading: false,
-        });
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+
+        // Success: We have coords, now get the city name
+        try {
+          const cityData = await reverseGeocode(latitude, longitude);
+          setLocation({
+            latitude,
+            longitude,
+            city: cityData.city,
+            country: cityData.country,
+            loading: false,
+            error: undefined
+          });
+        } catch (err) {
+          // If reverse geocoding fails, at least we have coords
+          setLocation({
+            latitude,
+            longitude,
+            loading: false,
+            error: undefined,
+            city: "Unknown Location"
+          });
+        }
       },
       (err) => {
-        // Fallback to IP location silently on error
-        fetchIpLocation();
+        // Error: Permission denied or timeout
+        console.warn("Geolocation error:", err.message);
+        setLocation({
+          latitude: null,
+          longitude: null,
+          loading: false,
+          error: "Location access denied. Please enable GPS.",
+        });
       },
       {
         enableHighAccuracy: true,
-        timeout: 10000,
+        timeout: 15000,
         maximumAge: 0,
       }
     );
   }, []);
 
-  async function fetchIpLocation() {
-    try {
-      const response = await fetch("https://ipapi.co/json/");
-      const data = await response.json();
-
-      setLocation({
-        latitude: data.latitude,
-        longitude: data.longitude,
-        city: data.city,
-        country: data.country_name,
-        loading: false,
-      });
-    } catch (error) {
-      console.warn("IP location failed, using default:", error);
-
-      // Final fallback: Default to New Delhi, India
-      setLocation({
-        latitude: 28.6139,
-        longitude: 77.2090,
-        city: "New Delhi",
-        country: "India",
-        loading: false,
-      });
-    }
+  async function reverseGeocode(lat: number, lon: number) {
+    // Use a free client-side reverse geocoding API (BigDataCloud is robust for this)
+    // No API key required for client-side use
+    const res = await fetch(
+      `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`
+    );
+    const data = await res.json();
+    return {
+      city: data.city || data.locality || data.principalSubdivision || "Unknown",
+      country: data.countryName
+    };
   }
 
   return location;

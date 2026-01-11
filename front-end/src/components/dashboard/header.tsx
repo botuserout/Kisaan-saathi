@@ -49,7 +49,7 @@ export default function DashboardHeader() {
             <SheetHeader className="mb-6">
               <div className="flex items-center gap-2 mb-2">
                 <Logo />
-                <SheetTitle>Kisan Saathi</SheetTitle>
+                <SheetTitle>Kisaan Saathi</SheetTitle>
               </div>
             </SheetHeader>
             <div className="py-4">

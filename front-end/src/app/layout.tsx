@@ -3,7 +3,8 @@ import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import BottomNavigation from '@/components/shared/bottom-navigation';
 import { cn } from '@/lib/utils';
-import ClientI18nProvider from '@/components/shared/client-i18n-provider'; // New component
+import ClientI18nProvider from '@/components/shared/client-i18n-provider';
+import { AuthProvider } from '@/components/auth/auth-provider';
 
 
 export const metadata: Metadata = {
@@ -27,15 +28,17 @@ export default function RootLayout({
         />
       </head>
       <body className={cn('font-body antialiased min-h-screen')} suppressHydrationWarning={true}>
-        <ClientI18nProvider>
-          <div className="relative flex flex-col min-h-screen">
-            <main className="flex-grow pb-24 md:pb-8 px-4 pt-8">
-              <div className="max-w-4xl mx-auto w-full">{children}</div>
-            </main>
-            <BottomNavigation />
-          </div>
-          <Toaster />
-        </ClientI18nProvider>
+        <AuthProvider>
+          <ClientI18nProvider>
+            <div className="relative flex flex-col min-h-screen">
+              <main className="flex-grow pb-24 px-4 pt-8">
+                <div className="max-w-4xl mx-auto w-full">{children}</div>
+              </main>
+              <BottomNavigation />
+            </div>
+            <Toaster />
+          </ClientI18nProvider>
+        </AuthProvider>
       </body>
     </html>
   );

@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Paperclip, Send } from 'lucide-react';
 import PageHeader from '@/components/shared/page-header';
+import VoiceAssistant from '@/components/shared/voice-assistant';
 import { api } from '@/lib/api';
 
 type Message = {
@@ -22,7 +23,7 @@ import { useTranslation } from 'react-i18next';
 
 export default function ChatPage() {
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   // Auth check moved to AuthGuard
 
   const [messages, setMessages] = useState<Message[]>([
@@ -144,6 +145,7 @@ export default function ChatPage() {
           </div>
         </div>
       </div>
+      <VoiceAssistant language={i18n.language} />
     </AuthGuard>
   );
 }

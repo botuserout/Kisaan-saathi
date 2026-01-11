@@ -1,160 +1,147 @@
+"use client";
 
-'use client';
-
-import { useState, useRef, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Mic, Loader2, Volume2, AlertCircle, ArrowLeft } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { Mic, Loader2, Volume2, StopCircle, ArrowLeft } from 'lucide-react';
+import { useVoiceAssistant } from '@/hooks/use-voice-assistant';
+import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
-import { processVoiceAudio } from './voice-service';
-
-type VoiceState = 'idle' | 'listening' | 'processing' | 'speaking' | 'error';
+import { useRouter } from 'next/navigation';
 
 export default function VoiceClient() {
+    const { t, i18n } = useTranslation();
     const router = useRouter();
-    const [state, setState] = useState<VoiceState>('idle');
-    const [transcript, setTranscript] = useState('');
-    const [response, setResponse] = useState('');
-    const [error, setError] = useState('');
 
-    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-    const chunksRef = useRef<Blob[]>([]);
-
-    const startListening = async () => {
-        try {
-            setState('listening');
-            setTranscript('');
-            setResponse('');
-            setError('');
-
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            const mediaRecorder = new MediaRecorder(stream);
-            mediaRecorderRef.current = mediaRecorder;
-            chunksRef.current = [];
-
-            mediaRecorder.ondataavailable = (e) => {
-                if (e.data.size > 0) chunksRef.current.push(e.data);
-            };
-
-            mediaRecorder.onstop = async () => {
-                const audioBlob = new Blob(chunksRef.current, { type: 'audio/webm' });
-                await handleAudioProcess(audioBlob);
-
-                // Stop all tracks
-                stream.getTracks().forEach(track => track.stop());
-            };
-
-            mediaRecorder.start();
-        } catch (err) {
-            console.error(err);
-            setError('Microphone access denied or not available.');
-            setState('error');
-        }
+    // Helper to map app language to speech language
+    const getLocale = (lang: string) => {
+        const map: Record<string, string> = {
+            'en': 'en-IN',
+            'hi': 'hi-IN',
+            'gu': 'gu-IN',
+            'or': 'or-IN',
+            'bho': 'hi-IN',
+            'kn': 'kn-IN',
+            'ml': 'ml-IN'
+        };
+        return map[lang] || 'en-IN';
     };
 
-    const stopListening = () => {
-        if (mediaRecorderRef.current && state === 'listening') {
-            mediaRecorderRef.current.stop();
-            setState('processing');
-        }
-    };
+    const {
+        state,
+        transcript,
+        error,
+        startListening,
+        stopAudio,
+        isSupported
+    } = useVoiceAssistant({
+        language: getLocale(i18n.language)
+    });
 
-    const handleAudioProcess = async (blob: Blob) => {
-        try {
-            // Mocking the flow for now as backend might not be fully ready with real STT
-            // In real implementation:
-            // const result = await processVoiceAudio(blob);
+    const isActive = state !== 'IDLE';
 
-            // Simulating API delay
-            setTimeout(() => {
-                setTranscript("How much fertilizer should I use for wheat?");
-                setResponse("For wheat, it is recommended to use 120kg of Nitrogen per hectare, split into 3 doses.");
-                setState('speaking');
-            }, 2000);
-
-            // Real Call (Uncomment when backend is ready)
-            /*
-            const result = await processVoiceAudio(blob);
-            setTranscript(result.transcript || '');
-            setResponse(result.reply || '');
-            setState('speaking');
-            */
-
-        } catch (err) {
-            setError('Failed to process voice. Please try again.');
-            setState('error');
-        }
-    };
+    // Fallback if browser doesn't support Web Speech API
+    if (!isSupported) {
+        return (
+            <div className="flex flex-col h-full min-h-[80vh] items-center justify-center p-6 text-center">
+                <Button
+                    variant="ghost"
+                    className="absolute top-4 left-4"
+                    onClick={() => router.push('/')}
+                >
+                    <ArrowLeft className="mr-2 h-4 w-4" /> {t('back', 'Back')}
+                </Button>
+                <h2 className="text-xl font-bold text-destructive mb-2">Voice Not Supported</h2>
+                <p>Your browser doesn't support the required speech features.</p>
+                <p className="text-sm text-muted-foreground mt-2">Try using Google Chrome.</p>
+            </div>
+        );
+    }
 
     return (
-        <div className="flex flex-col h-full min-h-[80vh] items-center justify-center p-4">
+        <div className="flex flex-col h-full min-h-[80vh] items-center justify-center p-4 relative">
+            {/* Back Button */}
             <Button
                 variant="ghost"
                 className="absolute top-4 left-4"
                 onClick={() => router.push('/')}
             >
-                <ArrowLeft className="mr-2 h-4 w-4" /> Back
+                <ArrowLeft className="mr-2 h-4 w-4" /> {t('back', 'Back')}
             </Button>
 
-            <div className="w-full max-w-md space-y-8 text-center">
+            <div className="w-full max-w-lg flex flex-col items-center justify-center space-y-8">
 
-                {/* Status Display */}
-                <div className="min-h-[100px] flex items-end justify-center pb-4">
-                    {state === 'idle' && <p className="text-xl text-muted-foreground font-medium">Tap to Ask</p>}
-                    {state === 'listening' && <div className="flex gap-1 h-8 items-center">
-                        <span className="w-2 h-full bg-primary animate-[pulse_0.5s_ease-in-out_infinite]"></span>
-                        <span className="w-2 h-2/3 bg-primary animate-[pulse_0.5s_ease-in-out_infinite_0.1s]"></span>
-                        <span className="w-2 h-full bg-primary animate-[pulse_0.5s_ease-in-out_infinite_0.2s]"></span>
-                        <span className="w-2 h-1/2 bg-primary animate-[pulse_0.5s_ease-in-out_infinite_0.3s]"></span>
-                    </div>}
-                    {state === 'processing' && <Loader2 className="h-8 w-8 animate-spin text-primary" />}
-                    {state === 'error' && <p className="text-destructive font-medium">{error}</p>}
+                {/* Status Text */}
+                <div className="min-h-[3rem] text-center">
+                    {state === 'IDLE' && (
+                        <p className="text-2xl font-medium text-muted-foreground">{t('tap_to_speak', 'Tap to Ask')}</p>
+                    )}
+                    {state === 'LISTENING' && (
+                        <div className="flex flex-col items-center gap-2">
+                            <p className="text-xl text-primary font-bold animate-pulse">{t('listening', 'Listening...')}</p>
+                            <div className="flex gap-1 h-4 items-center">
+                                <div className="w-1.5 h-full bg-primary animate-[pulse_0.5s_ease-in-out_infinite]"></div>
+                                <div className="w-1.5 h-2/3 bg-primary animate-[pulse_0.5s_ease-in-out_infinite_0.1s]"></div>
+                                <div className="w-1.5 h-full bg-primary animate-[pulse_0.5s_ease-in-out_infinite_0.2s]"></div>
+                            </div>
+                        </div>
+                    )}
+                    {state === 'PROCESSING' && (
+                        <p className="text-xl text-amber-500 font-medium">{t('processing', 'Thinking...')}</p>
+                    )}
+                    {state === 'SPEAKING' && (
+                        <p className="text-xl text-green-600 font-medium flex items-center justify-center gap-2">
+                            <Volume2 className="h-5 w-5" />
+                            {t('speaking', 'Speaking...')}
+                        </p>
+                    )}
+                    {state === 'ERROR' && (
+                        <p className="text-xl text-red-500 font-medium">{error || t('error')}</p>
+                    )}
                 </div>
 
-                {/* Mic Button */}
+                {/* Main Mic Button */}
                 <div className="relative group">
+                    {/* Visual Glow Effect */}
                     <div className={cn(
-                        "absolute inset-0 bg-primary/20 rounded-full blur-2xl transition-all duration-500",
-                        state === 'listening' ? "scale-150 opacity-100" : "scale-100 opacity-0"
+                        "absolute inset-0 rounded-full blur-2xl transition-all duration-500",
+                        state === 'LISTENING' ? "bg-red-500/40 scale-150 opacity-100" :
+                            state === 'SPEAKING' ? "bg-green-500/40 scale-125 opacity-100" :
+                                "bg-primary/20 scale-100 opacity-0"
                     )} />
 
                     <Button
                         size="icon"
                         className={cn(
-                            "w-32 h-32 rounded-full shadow-xl transition-all duration-300 relative z-10",
-                            state === 'listening' ? "bg-red-500 hover:bg-red-600 scale-110" : "bg-primary hover:bg-primary/90"
+                            "w-32 h-32 rounded-full shadow-2xl transition-all duration-300 relative z-10 border-4",
+                            state === 'LISTENING' ? "bg-red-500 hover:bg-red-600 border-red-200" :
+                                state === 'PROCESSING' ? "bg-amber-500 hover:bg-amber-600 border-amber-200" :
+                                    state === 'SPEAKING' ? "bg-green-500 hover:bg-green-600 border-green-200" :
+                                        "bg-primary hover:bg-primary/90 border-transparent"
                         )}
-                        onClick={state === 'listening' ? stopListening : startListening}
-                        disabled={state === 'processing'}
+                        onClick={isActive ? stopAudio : startListening}
                     >
-                        {state === 'processing' ? (
-                            <Loader2 className="h-12 w-12 animate-spin" />
+                        {state === 'PROCESSING' ? (
+                            <Loader2 className="h-14 w-14 text-white animate-spin" />
+                        ) : state === 'SPEAKING' ? (
+                            <Volume2 className="h-14 w-14 text-white animate-pulse" />
+                        ) : isActive ? (
+                            <StopCircle className="h-14 w-14 text-white" />
                         ) : (
-                            <Mic className={cn("h-12 w-12", state === 'listening' && "animate-pulse")} />
+                            <Mic className="h-14 w-14 text-white" />
                         )}
                     </Button>
                 </div>
 
-                {/* Interaction Text */}
-                <div className="space-y-4 px-4 min-h-[150px]">
+                {/* Transcript / Result Card */}
+                <div className={cn(
+                    "w-full transition-all duration-500 overflow-hidden px-4",
+                    transcript || state !== 'IDLE' ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8 pointer-events-none"
+                )}>
                     {transcript && (
-                        <div className="text-lg font-medium text-foreground/80">
-                            "{transcript}"
-                        </div>
-                    )}
-
-                    {response && (
-                        <Card className="bg-muted/50 border-none shadow-sm animate-in slide-in-from-bottom-5">
-                            <CardContent className="p-6 text-left flex gap-4">
-                                <div className="shrink-0 mt-1">
-                                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                                        <Volume2 className="h-4 w-4 text-primary" />
-                                    </div>
-                                </div>
-                                <p className="text-lg leading-relaxed text-foreground">
-                                    {response}
-                                </p>
+                        <Card className="border-none shadow-sm bg-muted/50">
+                            <CardContent className="p-6 text-center">
+                                <p className="text-lg font-medium leading-relaxed text-foreground/90">"{transcript}"</p>
                             </CardContent>
                         </Card>
                     )}

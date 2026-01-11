@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 class GeminiService:
     def __init__(self):
         self.client = genai.Client(api_key=settings.GEMINI_API_KEY)
-        self.model_id = 'gemini-pro'
+        self.model_id = 'gemini-1.5-flash'
         
     async def generate_response(self, query: str, context: dict = None) -> dict:
         """
@@ -31,7 +31,7 @@ class GeminiService:
         """
         return await self._call_gemini(prompt)
 
-    async def analyze_image(self, prompt: str, image_base64: str) -> dict:
+    async def analyze_image(self, prompt: str, image_base64: str, mime_type: str = "image/jpeg") -> dict:
         """
         Analyzes an image + prompt.
         """
@@ -44,7 +44,7 @@ class GeminiService:
                 model=self.model_id,
                 contents=[
                     prompt,
-                    types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg")
+                    types.Part.from_bytes(data=image_bytes, mime_type=mime_type)
                 ],
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json"

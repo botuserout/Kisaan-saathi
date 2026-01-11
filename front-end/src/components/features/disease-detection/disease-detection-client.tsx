@@ -30,7 +30,7 @@ import {
   Aperture,
 } from 'lucide-react';
 import Image from 'next/image';
-import { useEffect, useRef, useState, useActionState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useActionState, useCallback } from 'react';
 import { auth } from '@/lib/firebase';
 import { useFormStatus } from 'react-dom';
 import { detectDisease, type DiseaseDetectionState } from '@/app/actions';
@@ -143,13 +143,17 @@ export default function DiseaseDetectionClient() {
                 setImagePreview(reader.result as string);
               };
               reader.readAsDataURL(file);
+              setFileToUpload(file);
+              setIsCameraOpen(false);
             }
-            setIsCameraOpen(false);
           }
         }, 'image/jpeg');
       }
     }
   };
+
+  const [uploading, setUploading] = useState(false);
+  const [fileToUpload, setFileToUpload] = useState<File | null>(null);
 
   useEffect(() => {
     if (state?.error && !state.formErrors) {
@@ -161,9 +165,68 @@ export default function DiseaseDetectionClient() {
     }
   }, [state, toast]);
 
+  const handleSubmit = async () => {
+    if (!fileToUpload) return;
+    setUploading(true);
+
+    // Safety timeout to prevent infinite loading state
+    const safetyTimeout = setTimeout(() => {
+      if (uploading) {
+        setUploading(false);
+        toast({
+          variant: 'destructive',
+          title: "Process Timed Out",
+          description: "The operation took too long. Please try again."
+        });
+      }
+    }, 45000);
+
+    try {
+      // 1. Upload Image
+      const { imageUrl } = await import('@/lib/upload-service').then(m => m.uploadImage(fileToUpload, token));
+
+      // 2. Prepare Form Data
+      const formData = new FormData();
+      formData.append('imageUrl', imageUrl);
+      formData.append('token', token);
+
+      // 3. Trigger Server Action
+      startTransition(() => {
+        formAction(formData);
+        // Note: formAction is void, so we rely on useActionState to update `state`.
+        // We will clear uploading state in useEffect when state changes.
+      });
+
+    } catch (error: any) {
+      console.error("Submission Error:", error.message);
+      toast({
+        variant: 'destructive',
+        title: "Upload Failed",
+        description: error.message || "Could not upload image for analysis."
+      });
+      setUploading(false); // Explicitly clear loading on catch
+    } finally {
+      clearTimeout(safetyTimeout);
+      // Note: We DO NOT setUploading(false) here if successful, 
+      // because we want to keep loading until the server action returns new UI.
+      // We'll handle cleanup in a useEffect watching `state`.
+    }
+  };
+
+  // 4. Force clear loading when we get a result or error from the server action
+  useEffect(() => {
+    if (state?.result || state?.error || state?.formErrors) {
+      setUploading(false);
+    }
+  }, [state]);
+
+  // We need to move useTransition up
+  const [isPending, startTransition] = React.useTransition();
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setFileToUpload(file);
       const reader = new FileReader();
       reader.onloadend = () => {
         setImagePreview(reader.result as string);
@@ -260,6 +323,7 @@ export default function DiseaseDetectionClient() {
                   type="button"
                   variant="outline"
                   onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
                 >
                   <ImageIcon className="mr-2 h-4 w-4" /> Gallery
                 </Button>
@@ -267,12 +331,28 @@ export default function DiseaseDetectionClient() {
                   type="button"
                   variant="outline"
                   onClick={() => setIsCameraOpen(true)}
+                  disabled={uploading}
                 >
                   <Camera className="mr-2 h-4 w-4" /> Camera
                 </Button>
               </div>
 
-              {imagePreview && <SubmitButton />}
+              {imagePreview && (
+                <Button
+                  onClick={handleSubmit}
+                  disabled={uploading}
+                  className="w-full"
+                >
+                  {uploading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Uploading & Analyzing...
+                    </>
+                  ) : (
+                    'Analyze Disease'
+                  )}
+                </Button>
+              )}
             </form>
           </CardContent>
         </Card>

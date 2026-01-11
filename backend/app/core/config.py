@@ -12,7 +12,11 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
     
     # CORS
-    BACKEND_CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:9002", "*"]
+    BACKEND_CORS_ORIGINS: list[str] = [
+        "http://localhost:3000", "http://127.0.0.1:3000",
+        "http://localhost:9002", "http://127.0.0.1:9002",
+        "http://localhost:8000", "http://127.0.0.1:8000"
+    ]
     
     model_config = SettingsConfigDict(
         env_file=".env",

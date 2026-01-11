@@ -2,7 +2,7 @@
 
 import { z } from 'zod';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api/v1';
 
 // We need a helper to fetch from backend
 async function fetchBackend(endpoint: string, data: any, token: string) {
@@ -38,33 +38,23 @@ export async function detectDisease(
   prevState: DiseaseDetectionState,
   formData: FormData
 ): Promise<DiseaseDetectionState> {
-  // Client must convert file to base64 and put it in 'image' field, OR we handle it here if it's a file
-  // But easier if we grab the 'token' from formData
-
   const token = formData.get('token') as string;
-  const imageFile = formData.get('image') as File;
+  const imageUrl = formData.get('imageUrl') as string;
 
   if (!token) return { error: "You must be logged in." };
-
-  // Convert File to Base64
-  let dataUri = '';
-  if (imageFile && imageFile.size > 0) {
-    const arrayBuffer = await imageFile.arrayBuffer();
-    const base64 = Buffer.from(arrayBuffer).toString('base64');
-    dataUri = `data:${imageFile.type};base64,${base64}`;
-  } else {
-    // Maybe it was passed as string?
-    dataUri = formData.get('image') as string;
-  }
-
-  if (!dataUri) return { error: "Image is required." };
+  if (!imageUrl) return { error: "Image URL is required for analysis." };
 
   try {
-    const response = await fetchBackend('/features/disease-detection', { image: dataUri }, token);
+    // We pass { image: imageUrl } because backend expects DiseaseDetectionRequest.image
+    const response = await fetchBackend('/features/disease-detection', { image: imageUrl }, token);
+
+    // Normalize response to match UI expectations
+    // Backend returns { scanId, result: { ... } }
+    // UI expects { result: { ... } }
     return { result: response.result };
   } catch (e: any) {
-    console.error(e);
-    return { error: e.message || 'An unexpected error occurred.' };
+    console.error("Analysis Error:", e);
+    return { error: e.message || 'An unexpected error occurred during analysis.' };
   }
 }
 
