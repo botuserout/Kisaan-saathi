@@ -1,6 +1,5 @@
-import dynamicClient from 'next/dynamic';
 import type { Metadata } from 'next';
-import { Suspense } from 'react';
+import ChatWrapper from '@/components/features/chat/chat-wrapper';
 
 export const metadata: Metadata = {
   title: 'Chat Assistant | Kisan Saathi',
@@ -10,15 +9,6 @@ export const metadata: Metadata = {
 // Force dynamic rendering to prevent static export errors
 export const dynamic = 'force-dynamic';
 
-const ChatClient = dynamicClient(
-  () => import('@/components/features/chat/chat-client'),
-  { ssr: false }
-);
-
 export default function ChatPage() {
-  return (
-    <Suspense fallback={<div className="p-4 text-center">Loading chat...</div>}>
-      <ChatClient />
-    </Suspense>
-  );
+  return <ChatWrapper />;
 }
